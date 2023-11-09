@@ -1,60 +1,86 @@
 use std::f32::consts::PI;
 use std::{thread::sleep, time::Duration};
 
+mod utils;
+use utils::{torus, rotate_y, project};
+
+const S_WIDTH: usize = 50_usize;
+const S_HEIGHT: usize = 50_usize;
+
 const THETA_INCR: f32 = 0.07;
 const PHI_INCR: f32 = 0.02;
-const R1: f32 = 1.00;   // radius of circle
-const R2: f32 = 2.00;   // radius of toroid
+const R1: f32 = 1.00;   // radius of circle that revolves an axis to make torus
+const R2: f32 = 2.00;   // radius of torus
+
 const K2: f32 = 5.00;   // distance from viewer
-const K1: f32 = 1.00;   // FOV
-fn main () {
-    
+const K1: f32 = (S_WIDTH as f32 * K2 * 3.0) / (8.0 * (R1 + R2));   // FOV
+
+fn main () -> ! {
+    // represents the current angle of torus
+    let (mut a, mut b) = (0.0, 0.0);
+
+    loop {
+        a += 0.4; b += 0.2;
+
+        // reset either a or b above if its value above 2 * PI
+        if a > 2.0 * PI {a = 0.0;}
+        if b > 2.0 * PI {b = 0.0;}
+
+        // create output and zbuffer
+        let mut output = [[' ';S_WIDTH];S_HEIGHT];
+        let mut zbuffer = [[0.0f32;S_WIDTH];S_HEIGHT];
+
+        // the loop of circle
+        let mut theta = 0.0;
+        while theta < 2.0 * PI {
+            theta += THETA_INCR;
+
+            // the loop of torus
+            let mut phi = 0.0;
+            while phi < 2.0 * PI {
+                phi += PHI_INCR;
+
+                // create torus
+                let (mut tx, mut ty, mut tz) = torus(R2, R1, theta, phi);
+                tz += K2; // added with K2 because K2 is the distance of point from screen
+                // rotate torus on y axis
+                (tx, ty, tz) = rotate_y(tx, ty, tz, a);
+                let ooz = 1.0/tz;
+
+                // create 2d projection of torus
+                let (mut p_tx, mut p_ty) = project(tx, ty, tz, K1);
+                p_tx += S_WIDTH as u32 / 2;
+                p_ty += S_HEIGHT as u32 / 2;
+
+                // get the torus surfave normal
+                let (mut nx, mut ny, mut nz) = torus(0.0, 1.0, theta, phi);
+                // rotate the surface normal on y axis
+                (nx, ny, nz) = rotate_y(nx, ny, nz, b);
+
+                // get luminance using dot product
+                let l = nx * 0.0 + ny * 1.0 + nz * -1.0;
+                let l_index = (l * 8.0) as usize;
+
+                if l > 0.0 && ooz > zbuffer[p_ty as usize][p_tx as usize] {
+                    zbuffer[p_ty as usize][p_tx as usize] = ooz;
+                    output[p_ty as usize][p_tx as usize] = ".,-~:;=!*#$@"
+                                                            .chars()
+                                                            .nth(l_index)
+                                                            .expect("Error cannot index luminance level");
+                }
+
+            }
+            
+        }
+        // print the output
+        for j in output {
+            for i in j {
+                print!("{}", i);
+            }
+            println!()
+        }
+        print!("\x1B[2J\x1B[1;1H");
+
+        sleep(Duration::from_millis(6));
+    }
 }
-
-fn torus (torus_r: f32, r: f32, theta: f32, phi: f32) -> (f32, f32, f32) {
-    // function that creates torus
-    let (sin_theta, cos_theta) = theta.sin_cos();
-    let (sin_phi, cos_phi) = phi.sin_cos();
-
-    let circle_x = torus_r + r * cos_theta;
-    let x = circle_x * cos_phi;
-    let y = sin_theta;
-    let z = circle_x * sin_phi;
-
-    (x, y, z)
-}
-
-fn rotate_x (x: f32, y:f32, z: f32, angle: f32) -> (f32, f32, f32) {
-    let (sin_angle, cos_angle) = angle.sin_cos();
-
-    // function that rotates point on axis on 3d plane
-    let x_rotated = x;
-    let y_rotated = y * cos_angle + z * sin_angle;
-    let z_rotated = y * -sin_angle + z * cos_angle;
-
-    (x_rotated, y_rotated, z_rotated)
-}
-
-fn rotate_y (x: f32, y:f32, z: f32, angle: f32) -> (f32, f32, f32) {
-    let (sin_angle, cos_angle) = angle.sin_cos();
-
-    // function that rotates point on axis on 3d plane
-    let x_rotated = x * cos_angle + z * -sin_angle;
-    let y_rotated = y;
-    let z_rotated = x * sin_angle + z * cos_angle;
-
-    (x_rotated, y_rotated, z_rotated)
-}
-
-fn rotate_z (x: f32, y:f32, z: f32, angle: f32) -> (f32, f32, f32) {
-    let (sin_angle, cos_angle) = angle.sin_cos();
-
-    // function that rotates point on axis on 3d plane
-    let x_rotated = x * cos_angle + y * sin_angle;
-    let y_rotated = x * -sin_angle + y * cos_angle;
-    let z_rotated = z;
-
-    (x_rotated, y_rotated, z_rotated)
-}
-
-
