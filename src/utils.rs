@@ -4,9 +4,10 @@ pub fn torus (torus_r: f32, r: f32, theta: f32, phi: f32) -> (f32, f32, f32) {
     let (sin_phi, cos_phi) = phi.sin_cos();
 
     let circle_x = torus_r + r * cos_theta;
+
     let x = circle_x * cos_phi;
     let y = sin_theta;
-    let z = circle_x * sin_phi;
+    let z = -circle_x * sin_phi;
 
     (x, y, z)
 }
@@ -42,12 +43,4 @@ pub fn rotate_z (x: f32, y:f32, z: f32, angle: f32) -> (f32, f32, f32) {
     let z_rotated = z;
 
     (x_rotated, y_rotated, z_rotated)
-}
-
-pub fn project (x: f32, y: f32, z: f32, k1: f32) -> (u32, u32){
-    let ooz = 1.0/z;
-    let px = (k1 * x * ooz) as u32;
-    let py = (k1 * y * ooz) as u32;
-
-    (px, py)
 }
