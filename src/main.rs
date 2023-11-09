@@ -2,7 +2,7 @@ use std::f32::consts::PI;
 use std::{thread::sleep, time::Duration};
 
 mod utils;
-use utils::{torus, rotate_y, project};
+use utils::{torus, rotate_y};
 
 const S_WIDTH: usize = 50_usize;
 const S_HEIGHT: usize = 50_usize;
@@ -48,9 +48,8 @@ fn main () -> ! {
                 let ooz = 1.0/tz;
 
                 // create 2d projection of torus
-                let (mut p_tx, mut p_ty) = project(tx, ty, tz, K1);
-                p_tx += S_WIDTH as u32 / 2;
-                p_ty += S_HEIGHT as u32 / 2;
+                let p_tx = (S_WIDTH as f32 / 2.0 + K1 * tx * ooz) as usize;
+                let p_ty = (S_HEIGHT as f32 / 2.0 - K1 * ty * ooz) as usize;
 
                 // get the torus surfave normal
                 let (mut nx, mut ny, mut nz) = torus(0.0, 1.0, theta, phi);
@@ -59,18 +58,16 @@ fn main () -> ! {
 
                 // get luminance using dot product
                 let l = nx * 0.0 + ny * 1.0 + nz * -1.0;
-                let l_index = (l * 8.0) as usize;
+                let l_index = f32::floor(l * 8.0) as usize;
 
-                if l > 0.0 && ooz > zbuffer[p_ty as usize][p_tx as usize] {
-                    zbuffer[p_ty as usize][p_tx as usize] = ooz;
-                    output[p_ty as usize][p_tx as usize] = ".,-~:;=!*#$@"
+                if l > 0.0 && ooz > zbuffer[p_ty][p_tx] {
+                    zbuffer[p_ty][p_tx] = ooz;
+                    output[p_ty][p_tx] = ".,-~:;=!*#$@"
                                                             .chars()
                                                             .nth(l_index)
                                                             .expect("Error cannot index luminance level");
                 }
-
             }
-            
         }
         // print the output
         for j in output {
